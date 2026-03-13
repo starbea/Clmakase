@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oliveyoung-api
+  namespace: oliveyoung
+  labels:
+    app: oliveyoung-api
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: oliveyoung-api
+  template:
+    metadata:
+      labels:
+        app: oliveyoung-api
+    spec:
+      containers:
+        - name: oliveyoung-api
+          # CI/CD에서 sed로 8b95b532를 커밋 SHA로 자동 교체
+          # ArgoCD가 이 태그 변경을 감지하여 롤링 업데이트 수행
+          image: 160884802838.dkr.ecr.ap-northeast-2.amazonaws.com/oliveyoung-api:495d51d7
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "dev" # 개발 프로필로 변경
+            - name: REDIS_HOST
+              value: "cloudwave-real-dev-redis.ugoffm.ng.0001.apn2.cache.amazonaws.com"
+            - name: DB_HOST
+              value: "cloudwave-real-dev-aurora.chqm4ig82r3p.ap-northeast-2.rds.amazonaws.com"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_NAME
+              value: "oliveyoung"
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: oliveyoung-db-secret
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oliveyoung-db-secret
+                  key: DB_PASSWORD
+          resources:
+            requests:
+              cpu: 100m # 500m -> 100m으로 축소
+              memory: 512Mi # 1Gi -> 512Mi로 축소
+            limits:
+              cpu: 500m # 2 -> 500m으로 축소
+              memory: 1Gi # 2Gi -> 1Gi로 축소
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30 # 대기 시간 단축
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60 # 대기 시간 단축
+            periodSeconds: 15

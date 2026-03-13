@@ -1,0 +1,25 @@
+################################################################################
+# Datadog TriggerAuthentication
+# KEDA가 Datadog API에 접근하기 위한 인증 설정
+################################################################################
+
+---
+# datadog-keda-secret은 GitLab CI deploy-secrets job이 관리합니다.
+# ArgoCD 관리 대상에서 제외 (git에 실제 키를 절대 저장하지 않음)
+# kubectl create secret generic datadog-keda-secret \
+#   --from-literal=apiKey=<DATADOG_API_KEY> \
+#   --from-literal=appKey=<DATADOG_APP_KEY> \
+#   -n oliveyoung
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: datadog-trigger-auth
+  namespace: oliveyoung
+spec:
+  secretTargetRef:
+    - parameter: apiKey
+      name: datadog-keda-secret
+      key: apiKey
+    - parameter: appKey
+      name: datadog-keda-secret
+      key: appKey

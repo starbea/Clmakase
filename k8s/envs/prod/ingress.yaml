@@ -1,0 +1,40 @@
+################################################################################
+# ALB Ingress
+# AWS Load Balancer Controller가 이 리소스를 감지하여 ALB를 자동 생성
+################################################################################
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oliveyoung-ingress
+  namespace: oliveyoung
+  annotations:
+    # ALB Controller가 처리
+    kubernetes.io/ingress.class: alb
+    # 인터넷 접근 가능한 ALB
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    # Terraform으로 만든 ALB SG (terraform output alb_sg_id 로 확인)
+    alb.ingress.kubernetes.io/security-groups: sg-0f588f1693cb4c0ad
+    # Public Subnet (terraform output public_subnet_ids 로 확인)
+    alb.ingress.kubernetes.io/subnets: subnet-0e794130c99477da6, subnet-0afaaff6cafbb6de4
+    # Target Type: IP (Pod에 직접 트래픽 전달)
+    alb.ingress.kubernetes.io/target-type: ip
+    # Health Check 설정
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-port: "8080"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:160884802838:certificate/e17ae2b5-594c-4d9c-ac3d-0aa090444037
+    # 태그
+    alb.ingress.kubernetes.io/tags: Project=cloudwave,Environment=prod,ManagedBy=alb-controller
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: oliveyoung-api
+                port:
+                  number: 80

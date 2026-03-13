@@ -1,0 +1,152 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oliveyoung-api
+  namespace: oliveyoung
+  labels:
+    app: oliveyoung-api
+    tags.datadoghq.com/env: "prod"
+    tags.datadoghq.com/service: "oliveyoung-api"
+    tags.datadoghq.com/version: "1.0.0"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: oliveyoung-api
+  template:
+    metadata:
+      labels:
+        app: oliveyoung-api
+        tags.datadoghq.com/env: "prod"
+        tags.datadoghq.com/service: "oliveyoung-api"
+        tags.datadoghq.com/version: "1.0.0"
+      annotations:
+        # --- Prometheus ----
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
+        # --- Datadog APM (트레이스 자동 주입) ---
+        admission.datadoghq.com/java-lib.version: "latest"
+        # --- Datadog 로그 수집 ---
+        ad.datadoghq.com/oliveyoung-api.logs: |
+          [
+            {
+              "source": "java",
+              "service": "oliveyoung-api",
+              "processing_rules": [
+                {
+                  "type": "exclude_at_match",
+                  "name": "exclude_debug_only",
+                  "pattern": ".*DEBUG.*"
+                }
+              ]
+            }
+          ]
+        # --- Istio Envoy 사이드카 리소스 제한 ---
+        # proxyCPULimit 500m: 30,000 VU 부하테스트 시 Envoy CPU throttling 방지
+        # KEDA 최대 20개 Pod 스케일링 기준 Pod당 ~700 RPS 처리 가능
+        sidecar.istio.io/proxyCPU: "100m"
+        sidecar.istio.io/proxyMemory: "128Mi"
+        sidecar.istio.io/proxyCPULimit: "500m"
+        sidecar.istio.io/proxyMemoryLimit: "256Mi"
+        # --- Datadog 메트릭 수집 ---
+        ad.datadoghq.com/oliveyoung-api.check_names: '["openmetrics"]'
+        ad.datadoghq.com/oliveyoung-api.init_configs: "[{}]"
+        ad.datadoghq.com/oliveyoung-api.instances: |
+          [
+            {
+              "prometheus_url": "http://%%host%%:8080/actuator/prometheus",
+              "namespace": "spring_boot",
+              "metrics": ["*"]
+            }
+          ]
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: oliveyoung-api
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: oliveyoung-api
+          # CI/CD에서 sed로 8b95b532를 커밋 SHA로 자동 교체
+          # ArgoCD가 이 태그 변경을 감지하여 롤링 업데이트 수행
+          image: 160884802838.dkr.ecr.ap-northeast-2.amazonaws.com/oliveyoung-api:b540a394
+          ports:
+            - containerPort: 8080
+          env:
+            # --- Datadog 필수 태그 및 연결 설정 ---
+            - name: DD_SERVICE
+              value: "oliveyoung-api"
+            - name: DD_ENV
+              value: "prod"
+            - name: DD_VERSION
+              value: "1.0.0"
+            - name: DD_LOGS_INJECTION
+              value: "true"
+            - name: DD_PROFILING_ENABLED
+              value: "true"
+            - name: DD_TRACE_SAMPLE_RATE
+              value: "0.05" # 1.0(100%)에서 0.05(5%)로 변경 - Datadog APM 비용 절감
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-0.kafka-headless.oliveyoung.svc.cluster.local:9092,kafka-1.kafka-headless.oliveyoung.svc.cluster.local:9092,kafka-2.kafka-headless.oliveyoung.svc.cluster.local:9092"
+            # ElastiCache 엔드포인트 (terraform output redis_endpoint 로 확인)
+            - name: REDIS_HOST
+              value: "cloudwave-dev-redis.ugoffm.ng.0001.apn2.cache.amazonaws.com"
+            - name: DB_HOST
+              value: "cloudwave-dev-aurora.cluster-chqm4ig82r3p.ap-northeast-2.rds.amazonaws.com"
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_NAME
+              value: "oliveyoung"
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: oliveyoung-db-secret
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: oliveyoung-db-secret
+                  key: DB_PASSWORD
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 75
+            periodSeconds: 10
+            failureThreshold: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            failureThreshold: 5
+
+---
+# API PodDisruptionBudget
+# 노드 교체 시 최소 1개 API 파드 항상 유지 (HA 보장)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: oliveyoung-api-pdb
+  namespace: oliveyoung
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: oliveyoung-api
