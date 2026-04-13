@@ -1,4 +1,4 @@
-# AWS EKS Infrastructure with Terraform
+# AWS Infrastructure with Terraform
 ## 🏗 아키텍처 개요
 ### 전체 구조
 ```text
