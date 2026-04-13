@@ -18,30 +18,10 @@ variable "rds_sg_id" {
   type        = string
 }
 
-variable "multi_az" {
-  description = "Whether to enable Multi-AZ deployment"
-  type        = bool
-}
-
-variable "availability_zone" {
-  description = "Availability zone for single-AZ RDS"
-  type        = string
-  default     = null
-}
 
 variable "engine_version" {
-  description = "MySQL engine version"
+  description = "Aurora MySQL engine version"
   type        = string
-}
-
-variable "instance_class" {
-  description = "Instance class for the RDS instance"
-  type        = string
-}
-
-variable "allocated_storage" {
-  description = "Storage size in GB"
-  type        = number
 }
 
 variable "db_name" {
@@ -58,6 +38,28 @@ variable "db_password" {
   description = "Master password for the database"
   type        = string
   sensitive   = true
+}
+
+variable "reader_count" {
+  description = "Number of Aurora reader instances"
+  type        = number
+  default     = 1
+}
+
+variable "instance_class" {
+  description = "Instance class for the RDS instance"
+  type        = string
+}
+
+variable "backup_retention_period" {
+  description = "Backup retention period in days"
+  type        = number
+  default     = 7
+}
+
+variable "preferred_backup_window" {
+  description = "Preferred backup window in UTC"
+  type        = string
 }
 
 variable "common_tags" {

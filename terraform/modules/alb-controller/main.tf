@@ -1,34 +1,39 @@
-################################################################################
-# ALB Controller Module - Main
-# CJ Oliveyoung CloudWave Infrastructure
+######################################################
+# ALB Controller Module
 #
-# Creates: IAM Policy + IRSA Role + Helm Release
-# - AWS ALB Ingress Controller for EKS
-# - OIDC 기반 IAM Role for Service Account (IRSA)
-################################################################################
+# 구성:
+# 1. ServiceAccount      - ALB Controller Pod용 ServiceAccount
+# 2. IRSA Role           - ServiceAccount가 사용할 IAM Role
+# 3. IAM Policy          - ALB Controller 권한 정책
+# 4. IAM Role Attachment - IAM Role에 정책 연결
+# 5. Helm Release        - AWS Load Balancer Controller 설치
+######################################################
 
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 }
 
-# ------------------------------------------------------------------------------
-# IAM Policy for ALB Controller
-# - ALB/NLB/TargetGroup 등 생성/관리 권한
-# ------------------------------------------------------------------------------
-resource "aws_iam_policy" "alb_controller" {
-  name   = "${local.name_prefix}-alb-controller-policy"
-  policy = file("${path.module}/iam-policy.json")
+######################################################
+# ServiceAccount
+# - ALB Controller Pod가 사용할 ServiceAccount
+# - IRSA Role annotation을 통해 IAM Role과 연결
+######################################################
+resource "kubernetes_service_account_v1" "alb_controller" {
+  metadata {
+    name      = "aws-load-balancer-controller"
+    namespace = "kube-system"
 
-  tags = merge(var.common_tags, {
-    Name = "${local.name_prefix}-alb-controller-policy"
-  })
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.alb_controller.arn
+    }
+  }
 }
 
-# ------------------------------------------------------------------------------
-# IRSA Role for ALB Controller
-# - K8s ServiceAccount → IAM Role 매핑
-# - OIDC Trust Policy로 특정 SA만 assume 가능
-# ------------------------------------------------------------------------------
+######################################################
+# IRSA Role
+# - ALB Controller ServiceAccount가 사용할 IAM Role
+# - kube-system 네임스페이스의 aws-load-balancer-controller만 Assume 가능하도록 제한
+######################################################
 resource "aws_iam_role" "alb_controller" {
   name = "${local.name_prefix}-alb-controller-role"
 
@@ -51,19 +56,42 @@ resource "aws_iam_role" "alb_controller" {
     ]
   })
 
-  tags = merge(var.common_tags, {
-    Name = "${local.name_prefix}-alb-controller-role"
-  })
+  tags = merge(
+    var.common_tags, 
+    {
+      Name = "${local.name_prefix}-alb-controller-role"
+    }
+  )
 }
 
+######################################################
+# IAM Policy
+# - ALB, Target Group, Listener 등 AWS Load Balancer 리소스를
+#   생성하고 관리하기 위한 권한 정책
+######################################################
+resource "aws_iam_policy" "alb_controller" {
+  name   = "${local.name_prefix}-alb-controller-policy"
+  policy = file("${path.module}/iam-policy.json")
+
+  tags = merge(
+    var.common_tags, 
+    {
+      Name = "${local.name_prefix}-alb-controller-policy"
+    }
+  )
+}
+
+# - ALB Controller Role에 AWS 권한 정책 연결
 resource "aws_iam_role_policy_attachment" "alb_controller" {
   policy_arn = aws_iam_policy.alb_controller.arn
   role       = aws_iam_role.alb_controller.name
 }
 
-# ------------------------------------------------------------------------------
-# Helm Release - AWS Load Balancer Controller
-# ------------------------------------------------------------------------------
+######################################################
+# Helm Release
+# - AWS Load Balancer Controller Helm 차트 설치
+# - 미리 생성한 ServiceAccount를 사용하도록 설정
+######################################################
 resource "helm_release" "alb_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
@@ -78,17 +106,12 @@ resource "helm_release" "alb_controller" {
 
   set {
     name  = "serviceAccount.create"
-    value = "true"
+    value = "false"
   }
 
   set {
     name  = "serviceAccount.name"
     value = "aws-load-balancer-controller"
-  }
-
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = aws_iam_role.alb_controller.arn
   }
 
   set {
@@ -102,6 +125,7 @@ resource "helm_release" "alb_controller" {
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.alb_controller,
+    kubernetes_service_account_v1.alb_controller,
+    aws_iam_role_policy_attachment.alb_controller
   ]
 }

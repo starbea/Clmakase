@@ -1,14 +1,10 @@
-################################################################################
-# ALB Controller Module - Variables
-################################################################################
-
 variable "project_name" {
-  description = "Project name"
+  description = "Project name used for resource naming"
   type        = string
 }
 
 variable "environment" {
-  description = "Environment (dev/staging/prod)"
+  description = "Deployment environment(dev, prod)"
   type        = string
 }
 
@@ -17,34 +13,33 @@ variable "cluster_name" {
   type        = string
 }
 
-variable "cluster_oidc_provider_arn" {
-  description = "EKS OIDC Provider ARN"
-  type        = string
-}
-
-variable "cluster_oidc_provider_url" {
-  description = "EKS OIDC Provider URL (https:// 제거됨)"
+variable "aws_region" {
+  description = "AWS region where the cluster is deployed"
   type        = string
 }
 
 variable "vpc_id" {
-  description = "VPC ID"
-  type        = string
-}
-
-variable "aws_region" {
-  description = "AWS region"
+  description = "VPC ID used by the EKS cluster"
   type        = string
 }
 
 variable "chart_version" {
-  description = "ALB Controller Helm chart version"
+  description = "Helm chart version for AWS Load Balancer Controller"
   type        = string
-  default     = "1.7.1"
+}
+
+variable "cluster_oidc_provider_arn" {
+  description = "OIDC provider ARN for IRSA"
+  type        = string
+}
+
+variable "cluster_oidc_provider_url" {
+  description = "OIDC provider URL for IRSA (without https)"
+  type        = string
 }
 
 variable "common_tags" {
-  description = "Common tags for all resources"
+  description = "Common tags applied to all resources"
   type        = map(string)
   default     = {}
 }

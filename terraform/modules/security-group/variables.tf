@@ -8,13 +8,13 @@ variable "environment" {
   type        = string
 }
 
-variable "db_name" {
-  description = "Database name"
+variable "cluster_name" {
+  description = "EKS cluster name used for tagging resources"
   type        = string
 }
 
-variable "db_username" {
-  description = "Database master username"
+variable "vpc_id" {
+  description = "VPC ID where the security groups will be created"
   type        = string
 }
 
