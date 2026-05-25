@@ -120,7 +120,6 @@ terraform/
 ├── env/
 │   ├── dev/
 │   └── prod/
-│
 └── modules/                       # 재사용 가능한 공통 모듈
     ├── vpc/                       # VPC / Subnet / Route / NAT
     ├── security-group/            # 보안 그룹
