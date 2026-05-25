@@ -114,6 +114,26 @@ terraform/
     └── ssm-bastion/               # SSM Bastion EC2
 ```
 
+```text
+terraform/
+├── bootstrap/
+├── env/
+│   ├── dev/
+│   └── prod/
+│
+└── modules/                       # 재사용 가능한 공통 모듈
+    ├── vpc/                       # VPC / Subnet / Route / NAT
+    ├── security-group/            # 보안 그룹
+    ├── ecr/                       # ECR Repository / Lifecycle
+    ├── eks/                       # EKS Cluster / Node Group / IAM
+    ├── alb-controller/            # AWS Load Balancer Controller
+    ├── rds/                       # Dev: RDS MySQL / Prod: Aurora MySQL
+    ├── redis/                     # ElastiCache Redis
+    ├── vpc_endpoint/              # S3, ECR, STS, SSM, Logs Endpoint
+    ├── secrets/                   # Secrets Manager
+    └── ssm-bastion/               # SSM Bastion EC2
+```
+
 ## 배포 순서
 1. Bootstrap
 ```bash
