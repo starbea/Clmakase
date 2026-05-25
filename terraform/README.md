@@ -94,16 +94,14 @@ terraform/
 │   │   ├── main.tf                # dev 환경 모듈 조합
 │   │   ├── provider.tf            # aws / helm / kubernetes provider
 │   │   ├── variables.tf
-│   │   ├── versions.tf
-│   │   └── terraform.tfvars
+│   │   └── versions.tf
 │   │
 │   └── prod/                      # Prod 환경 root module
 │       ├── backend.hcl            # prod backend 설정
 │       ├── main.tf                # prod 환경 모듈 조합
 │       ├── provider.tf
 │       ├── variables.tf
-│       ├── versions.tf
-│       └── terraform.tfvars
+│       └── versions.tf
 │
 └── modules/                       # 재사용 가능한 공통 모듈
     ├── vpc/                       # VPC / Subnet / Route / NAT
