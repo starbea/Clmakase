@@ -87,7 +87,6 @@ terraform/
 │   ├── provider.tf
 │   ├── variables.tf
 │   └── versions.tf
-│
 ├── env/
 │   ├── dev/                       # Dev 환경 root module
 │   │   ├── backend.hcl            # dev backend 설정
@@ -102,7 +101,6 @@ terraform/
 │       ├── provider.tf
 │       ├── variables.tf
 │       └── versions.tf
-│
 └── modules/                       # 재사용 가능한 공통 모듈
     ├── vpc/                       # VPC / Subnet / Route / NAT
     ├── security-group/            # 보안 그룹
